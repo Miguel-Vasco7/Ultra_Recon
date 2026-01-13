@@ -1,0 +1,234 @@
+Essa é a **Metodologia de Elite (0.1%)** organizada para você fazer tudo manualmente, sem depender de um script que pode travar. Se você seguir essa ordem no seu terminal, você terá o controle total sobre o que está salvando.
+
+### 1. Exploração de Terreno (Recon Passivo)
+
+### O objetivo aqui é encontrar o máximo de subdomínios sem tocar diretamente no servidor do alvo.
+
+# 1. Cria/Sobrescreve o arquivo com o primeiro resultado
+subfinder -d alvo.com -silent > subs.txt
+
+# 2. Adiciona (>>) os resultados do CRT.SH ao final do mesmo arquivo
+curl -s "https://crt.sh/?q=%25.alvo.com&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' >> subs.txt
+
+# 3. Adiciona (>>) os resultados do Amass ao final do mesmo arquivo
+amass enum -passive -d alvo.com -silent >> subs.txt
+
+# 4. O "Pulo do Gato": Remove duplicatas de dentro do próprio arquivo e salva por cima dele
+sort -u subs.txt -o subs.txt
+
+###########################################################################################################################################################
+************************************************* Top Tier: ***********************************************************************************************
+
+Chaos.projectdiscovery.io: É um repositório pronto de subdomínios de programas de Bug Bounty públicos. Eles já fizeram o scan por você.
+
+Censys.io: Excelente para encontrar a infraestrutura real (IPs) por trás dos subdomínios.
+
+SecurityTrails.com: É o favorito de muitos para ver o histórico de DNS (quem era o IP desse subdomínio há 2 anos?).
+
+**********************************************************************************************************************************************************
+##########################################################################################################################################################
+_________________________________________________________________
+
+### 2. Filtragem de Alvos Vivos
+
+# Verifica quem responde HTTP/HTTPS e tira o "lixo"
+cat subs.txt | httpx -silent -mc 200,403,500,401,301,302 -title -tech-detect -content-length > subs_ativos.txt
+
+# Cria uma lista limpa (com os resultados do httpx)  só com as URLs (essencial para o Nuclei e Katana)
+cat subs_ativos.txt | cut -d' ' -f1 > ativos_urls.txt
+_________________________________________________________________
+#=============================================
+# 3. Mineração de Endpoints (Caminhos e JS)| #
+#=============================================
+
+### Coletando URLs (Wayback + Katana + UrlFinder)
+
+# 1. Coleta histórica
+echo "alvo.com" | waybackurls > urls_wayback.txt
+
+# 2. Coleta ativa (Katana potente)
+katana -u "https://alvo.com" -d 3 -jc -kf > urls_katana.txt
+
+# 3. Coleta passiva ampla
+urlfinder -u "alvo.com" -subs > urls_finder.txt
+
+# 4. Junta TUDO, remove duplicatas e salva a lista final
+cat urls_wayback.txt urls_katana.txt urls_finder.txt | sort -u > urls_all_final.txt
+
+# 5. A Grande Limpeza (Tira lixo visual) 
+grep -avE "\.png|\.jpg|\.jpeg|\.gif|\.svg|\.woff|\.ttf|\.css|\.ico" urls_all_final.txt | sort -u > urls_limpas.txt
+
+# Para encontrar pontos de Injeção (SQLi, XSS, SSRF): Hackers buscam URLs que contenham parâmetros (?id=, &search=).
+grep "?" urls_limpas.txt | grep -vE "\.png|\.jpg|\.jpeg" > urls_parametros.txt
+
+# Para encontrar arquivos sensíveis (Informação Exposta):
+grep -iE "\.db|\.sql|\.txt|\.log|\.xml|\.json|\.env|\.zip|\.bak|\.swp" urls_all_final.txt > targets_sensiveis.txt
+
+# 6. Filtrar com o httpx 
+cat urls_limpas.txt | httpx -mc 200,403,401,500 -title -content-length -tech-detect > alvos_priorizados.txt
+
+«««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««»
+
+# Wayback (histórico)
+cat ativos_urls.txt | waybackurls > urls_wayback.txt
+
+# Katana (crawling ativo, precisa de https://)
+cat ativos_urls.txt | sed 's/^/https:\/\//' | katana -d 3 -jc -kf -silent > urls_katana.txt
+
+# URLFinder (coleta passiva ampla)
+cat ativos_urls.txt | urlfinder -subs > urls_finder.txt
+
+# Colocar tudo em um só arquivo 
+cat urls_wayback.txt urls_katana.txt urls_finder.txt | sort -u > urls_amass.txt
+
+# Filtrar
+grep -avE "\.(png|jpg|jpeg|gif|svg|woff|ttf|css|ico)$" urls_amass.txt | sort -u > urls_filtradas.txt
+
+# Usar o Httpx pra ver quais estão ativos
+cat urls_filtradas.txt | httpx -silent -mc 200,403,401,500 -title -content-length -tech-detect -status-code > alvos_priorizados.txt
+
+««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««««»
+____________________________________________________________________________________________________________________________________
+
+# 4. SEPARAÇÃO POR INTERESSE (O "Pulo do Gato")
+
+# A) Arquivos JavaScript (Para buscar segredos)
+grep -i "\.js$" alvos_priorizados.txt | sort -u > js_files.txt
+cat alvos_priorizados.txt | gf jsvar > js_files.txt
+
+# B) APIs e Endpoints Dinâmicos (Para o Arjun)
+grep -Ei "api|v1|v2|v3|rest|graphql|\.php|\.asp|\.jsp|\.json" alvos_priorizados.txt > targets_arjun.txt
+
+#############################################################################################
+# Filtra o que importa                                                                      #
+# cat urls.txt | grep "api\|graphql\|rest\|v1\|v2\|admin"                                   #
+# cat urls.txt | grep "\.json\|\.xml\|\.yaml"                                               #
+# cat urls.txt | grep "upload\|export\|download\|report"                                    #
+#                                                                                           #
+# cat urls.txt | grep -i "api\|graphql\|rest\|v[0-9]\|admin\|internal"                      #
+# cat urls.txt | grep -i "upload\|export\|download\|report\|webhook"                        #
+# cat urls.txt | grep "\.php\|\.asp\|\.jsp\|\.do\|\.action"  # Old school = mais bugs       #
+#############################################################################################
+
+# C) Potenciais Open Redirect (Bounty fácil)
+grep -Ei "url=|redirect=|next=|dest=|return=" alvos_priorizados.txt > open_redirect.txt
+
+# D) Filtra e salva em arquivos separados - combo pra achar muitas falhas com o gf
+
+# Filtra e salva em arquivos separados
+cat urls_all_final.txt | gf sqli > alvos_sqli.txt
+cat urls_all_final.txt | gf xss > alvos_xss.txt
+cat urls_all_final.txt | gf redirect > alvos_redirect.txt
+cat urls_all_final.txt | gf ssrf > alvos_ssrf.txt
+cat urls_all_final.txt | gf rce > alvos_rce.txt
+cat urls_all_final.txt | gf lfi > alvos_lfi.txt
+cat urls_all_final.txt | gf debug_logic > alvos_sensitive.txt
+
+# Percorrer uma lista de urls em inputs xss usando o dalfox
+cat alvos_xss.txt | dalfox pipe
+dalfox file alvos_xss.txt
+
+# E) Arquivos Sensíveis
+grep -Ei "\.env|\.git|\.config|\.sql|\.bak" alvos_priorizados.txt > sensitive_files.txt
+cat alvos_priorizados.txt | gf debug_logic > sensitive_files.txt
+_____________________________________________________________
+
+### 4. Caça aos Segredos (SecretFinder + trufflehog3 + LinkFinder)
+
+### Onde você encontra as chaves de API que pagam o Bounty
+
+# Rodar o Trufflelog3 em um site público
+
+### Baixa os arquivos do site
+wget -r -l1 -P site_scan https://www.site.com
+
+###  Escaneia a pasta baixada
+trufflehog3 site_scan
+
+###  Rodar o Trufflelog3 pra achados de chaves de Api
+trufflehog3 arquivo.txt -o resultado.json
+
+### LinkFinder encontra arquivos e pastas de um site /admin /api ...
+python3 linkfinder.py -i https://exemplo.com -d
+
+### Rodar o SecretFinder em toda a lista de JS coletada
+cat js_files.txt | xargs -I % python3 SecretFinder.py -i % -o cli > segredos_encontrados.txt
+
+# Dica: Procure por "High" ou "Critical" no arquivo gerado
+grep -E "High|Critical" segredos_encontrados.txt
+
+________________________________________________________________
+
+### 5. Escaneamento de Vulnerabilidades (Ataque de CVEs)
+
+### Rodar nas APIs e URLs com parâmetros que você já filtrou
+### Rodando Arjun para descobrir parâmetros ocultos
+
+arjun -i targets_arjun.txt -t 15 -oT arjun_results.txt
+
+# Versão Stealth para alvos grandes
+arjun -i targets_arjun.txt --rate-limit 5 -oT arjun_results.txt
+
+### Procurar por falhas conhecidas na infraestrutura.
+
+#### Rodar o Nuclei com foco em severidade alta e crítica
+nuclei -l ativos_urls.txt -severity medium,high,critical -silent -o vulns.txt
+
+#### Rodar templates focados em CVEs conhecidas e Exposições de Dados
+nuclei -l ativos_urls.txt -t cves/ -t exposures/ -t vulnerabilities/ -severity medium,high,critical -silent -o vulns_cve.txt
+
+#### Vasculha os arquivos JS que você filtrou em busca de chaves expostas
+nuclei -l js_files.txt -t http/exposures/tokens/ -silent -o secrets_found.txt
+
+#### Templates de Nuclei focados em APIs (Swagger, Postman, etc)
+nuclei -l endpoints_api.txt -t http/vulnerabilities/generic/ -t http/misconfiguration/ -o vulns_api.txt
+
+# Verifica quais arquivos sensíveis estão realmente expostos
+cat sensitive_files.txt | httpx -silent -mc 200 -status-code -o sensiveis_vivos.txt
+__________________________________________________________________________
+#########################################################################################
+#                               6.TESTE MANUAL                                          #
+#########################################################################################
+
+Dicas curtas e diretas para o teste manual:
+
+### 1. Filtragem Inteligente
+
+# Foca onde importa: endpoints com parâmetros
+grep -E "[?&=]" alvos_priorizados.txt > com_parametros.txt
+
+### 2. Priorização por Pistas
+
+· 403/401? → Tenta bypass com headers X-Forwarded-For: 127.0.0.1
+· Lento? → Testa Time-based SQLi
+· JSON responses? → Testa NoSQL injection
+· Tem "id"? → Testa IDOR sequencial (123→124→125)
+
+### 3. Burp Tricks Rápidos
+
+· Intruder com payloads mínimos:
+  
+  '
+  "
+  {{7*7}}
+  ../../etc/passwd
+  ```
+· Repeater → Muda método: GET→POST→PUT
+· Proxy → Intercepta e altera números: "price": 100 → "price": -1
+
+### 4. Padrões que Pagam
+
+· Uploads? → Tenta .php.jpg com magic bytes
+· Search? → * ou admin (vaza dados)
+· API? → Remove/auth header ou muda para {"admin":true}
+
+### 5. Mentalidade
+
+· Pensa: "Onde o dev esqueceu de validar?"
+· Olha logs/erros → Vazam caminhos ou versões
+· Testa o óbvio que scanners perdem
+
+### Dica Ouro:
+
+Começa por 3 URLs que parecem mais interessantes (login, upload, admin) ao invés de tudo. Profundidade > Quantidade.
+#########################################################################################################################################################
