@@ -6,6 +6,7 @@ Este script instala todas as dependências que o seu código chama (`subfinder`,
 # install.sh - Instalador de dependências para ULTRA RECON
 
 echo -e "\033[1;34m[*] Instalando dependências do sistema...\033[0m"
+
 sudo apt-get update
 sudo apt-get install -y gold-bug jq python3 python3-pip curl git-core
 
@@ -28,15 +29,23 @@ go install -v github.com/projectdiscovery/katana/cmd/katana@latest
 go install -v github.com/tomnomnom/gf@latest
 
 echo -e "\033[1;34m[*] Instalando ferramentas via Python...\033[0m"
+
 pip3 install arjun
 
 echo -e "\033[1;34m[*] Configurando GF Patterns...\033[0m"
+
 mkdir -p ~/.gf
+
 git clone https://github.com/tomnomnom/gf ~/gf-temp
+
 cp ~/gf-temp/examples/*.json ~/.gf
+
 rm -rf ~/gf-temp
+
 git clone https://github.com/1ndianl33t/Gf-Patterns ~/gf-patterns-temp
+
 cp ~/gf-patterns-temp/*.json ~/.gf
+
 rm -rf ~/gf-patterns-temp
 
 echo -e "\033[1;32m[!] Instalação Concluída! Reinicie o terminal ou dê 'source ~/.bashrc'\033[0m"
@@ -60,6 +69,7 @@ Certifique-se de ter o **Go 1.19+** e **Python 3** instalados.
 ## 🚀 Como instalar
 
 git clone [https://github.com/seu-usuario/ultra-recon.git](https://github.com/seu-usuario/ultra-recon.git)
+
 cd ultra-recon
 chmod +x install.sh recon.sh
 ./install.sh
@@ -84,6 +94,3 @@ Este script foi desenvolvido para fins educacionais e testes de segurança autor
 Desenvolvido por **Miguel Vasco** | Security Researcher
 
 
-**Gostaria que eu criasse um arquivo `.gitignore` para o seu repositório não ficar cheio de logs de testes quando você subir pro GitHub?**
-
-```
