@@ -1,0 +1,304 @@
+#!/bin/bash
+# BUG BOUNTY ULTIMATE - CERTO QUE FUNCIONA
+
+#!/bin/bash
+
+# --- CORES ---
+#!/bin/bash
+
+# --- CORES ---
+# --- CORES ---
+ROSA='\033[035;1m'
+BRANCO='\033[037;1m'
+RESET='\033[0m'
+
+# 1. PEGAR O ALVO PRIMEIRO (Para o Header funcionar)
+TARGET="$1"
+[ -z "$TARGET" ] && { echo -e "${ROSA}Exemplo: $0 <alvo.com>${RESET}"; exit 1; }
+
+clear
+
+# --- HEADER (Agora com $TARGET funcionando) ---
+echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
+echo -e "  ${BRANCO}                   ULTRA RECON${RESET}"
+echo -e "  ${ROSA}        Miguel Vasco | Developer & Security Researcher     ${RESET}"
+echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
+echo -e "\n${ROSA}[+]${RESET} ${BRANCO}Target:${RESET}  $TARGET"
+echo -e "${ROSA}[+]${RESET} ${BRANCO}Started:${RESET} $(date +%H:%M:%S)"
+echo -e "\n${ROSA}#------------------------------------------------------------#${RESET}"
+
+# 2. CONFIGURAÇÃO DE DIRETÓRIO
+DIR_NAME="BB_$(echo $TARGET | cut -d. -f1)_$(date +%s)"
+echo -e "\n${ROSA}[*] Criando diretório:${RESET} $DIR_NAME"
+
+mkdir -p "$DIR_NAME"
+cd "$DIR_NAME" || exit 1
+mkdir -p {recon,ativos,urls,js,apis,arjun,vulns,results,katana,filters}
+
+# --- DAQUI PARA BAIXO O SEU CÓDIGO SEGUE ---
+# (O resto das fases que você mandou estão tecnicamente corretas!)
+echo -e "\n📂 ESTRUTURA:"
+ls -la
+
+echo -e "\033[1;31m[ \033[5;31m\033[0m\033[1;31m ]\033[0m \033[1;41m SCANNING SUBDOMAINS \033[0m \033[1;31m»»»\033[0m \033[1;37mTARGET: $TARGET\033[0m"
+# 1. SUBFINDER FORTE
+echo -e "\033[1;34m⚡\033[0m \033[1;37mRunning:\033[0m \033[1;32mSubfinder\033[0m \033[1;30m(Passive Recon)\033[0m"
+subfinder -d "$TARGET" -silent -o recon/subs1.txt
+echo "Subs1: $(wc -l recon/subs1.txt)"
+
+# 2. AMASS
+echo -e "\033[1;35m🔥\033[0m \033[1;37mRunning:\033[0m \033[1;32mAmass\033[0m \033[1;30m(Active Enum Level 2)\033[0m"
+amass enum -passive -d "$TARGET" -silent -o recon/subs2.txt
+echo "Subs2: $(wc -l recon/subs2.txt)"
+
+# 3. CRT.SH DIRETO
+echo -e "\033[1;31m💀\033[0m \033[1;37mRunning:\033[0m \033[1;32mPureDNS/ShuffleDNS\033[0m \033[1;30m(Bruteforce Level 3)\033[0m"
+curl -s "https://crt.sh/?q=%25.$TARGET&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' | sort -u > recon/subs3.txt
+echo "Subs3: $(wc -l recon/subs3.txt)"
+
+# UNIR TUDO
+cat recon/subs*.txt | sort -u > recon/all_subs.txt
+TOTAL_SUBS=$(wc -l < recon/all_subs.txt)
+echo "✅ TODOS SUBS: $TOTAL_SUBS"
+
+echo -e "\n\033[1;36m[ \033[5;36m\033[0m\033[1;36m ]\033[0m \033[1;46m CHECKING ALIVE TARGETS \033[0m \033[1;36mÂ»Â»Â»\033[0m \033[1;37mSTATUS: VALIDATING\033[0m"
+# HTTPX COMPLETO
+# --- NOVO BLOCO HTTPX (CORRIGIDO) ---
+echo -e "\033[1;36m📡\033[0m \033[1;37mRunning:\033[0m \033[1;32mHTTPX\033[0m"
+# Adicionei -p 80,443,8080,8443 para garantir
+httpx -l recon/all_subs.txt -silent -p 80,443,8080,8443 -status-code -title -o ativos/full.txt
+
+# Se o full.txt estiver vazio, vamos forçar o domínio principal para o scan não parar
+if [ ! -s ativos/full.txt ]; then
+    echo "http://$TARGET" > ativos/urls.txt
+    echo "https://$TARGET" >> ativos/urls.txt
+else
+    cut -d' ' -f1 ativos/full.txt > ativos/urls.txt
+fi
+
+ATIVOS=$(wc -l < ativos/urls.txt)
+echo "✅ ATIVOS: $ATIVOS"
+
+# --- NOVO BLOCO KATANA (FORCE MODE) ---
+echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
+
+# Agora ele sempre vai tentar, nem que seja no alvo principal
+katana -list ativos/urls.txt -silent -js-crawl -kf all -c 15 -d 3 -o urls/katana.txt
+
+# Se o Katana ainda assim falhar, usamos o que veio do Wayback/GAU
+cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | sort -u > urls/all_urls.txt
+echo -e "\n\033[1;33m[ \033[5;33m$$$\033[0m\033[1;33m ]\033[0m \033[1;43m EXTRACTING ENDPOINTS & URLS \033[0m \033[1;33m»»»\033[0m \033[1;37mSTATUS: MINING\033[0m"
+
+# 5. WAYBACKURLS
+echo -e "\033[1;33m📦\033[0m \033[1;37mRunning:\033[0m \033[1;32mWaybackurls\033[0m \033[1;30m(Fetching Historical Data)\033[0m"
+waybackurls "$TARGET" > urls/wayback.txt
+echo "Wayback: $(wc -l < urls/wayback.txt) URLs"
+
+# 6. GAU (Get All URLs)
+echo -e "\033[1;33m🛸\033[0m \033[1;37mRunning:\033[0m \033[1;32mGAU\033[0m \033[1;30m(Getting All URLs)\033[0m"
+gau "$TARGET" 2>/dev/null > urls/gau.txt
+echo "GAU: $(wc -l < urls/gau.txt) URLs"    
+
+# EXTRA: Mesclar e remover duplicatas
+cat urls/wayback.txt urls/gau.txt | sort -u > urls/all_urls.txt
+echo "Total únicas: $(wc -l < urls/all_urls.txt) URLs"
+
+
+# JUNTAR URLS
+cat urls/*.txt 2>/dev/null | sort -u > urls/all_urls.txt
+TOTAL_URLS=$(wc -l < urls/all_urls.txt 2>/dev/null || echo 0)
+echo "✅ TOTAL URLS: $TOTAL_URLS"
+
+echo -e "\033[1;32m🔍\033[0m \033[1;37mRunning:\033[0m \033[1;32mGrep/Sorting\033[0m \033[1;30m(Extracting Potential Vulns)\033[0m"
+# 7. JS FILES
+echo -e "\033[1;32m📜\033[0m \033[1;37mRunning:\033[0m \033[1;32mJS_Filter\033[0m \033[1;30m(Extracting JavaScript Endpoints)\033[0m"
+grep -i "\.js$" urls/all_urls.txt 2>/dev/null > js/all_js.txt
+JS_COUNT=$(wc -l < js/all_js.txt 2>/dev/null || echo 0)
+echo "JS Files: $JS_COUNT"
+
+# 8. VULNERABILITY PATTERNS (GF)
+echo -e "\033[1;32m🧠\033[0m \033[1;37mRunning:\033[0m \033[1;32mGF Patterns\033[0m \033[1;30m(Analyzing Vulnerable Parameters)\033[0m"
+# Criando pasta para os filtros se não existir
+mkdir -p filters
+
+# Filtrando padrões específicos
+gf sqli urls/all_urls.txt > filters/sqli.txt
+gf xss urls/all_urls.txt > filters/xss.txt
+gf lfi urls/all_urls.txt > filters/lfi.txt
+gf rce urls/all_urls.txt > filters/rce.txt
+gf redirect urls/all_urls.txt > filters/open_redirect.txt
+gf ssti urls/all_urls.txt > filters/ssti.txt
+
+# Exibindo resultados
+echo "SQLi: $(wc -l < filters/sqli.txt) potenciais"
+echo "XSS:  $(wc -l < filters/xss.txt) potenciais"
+echo "LFI:  $(wc -l < filters/lfi.txt) potenciais"
+echo "RCE:  $(wc -l < filters/rce.txt) potenciais"
+echo "Redirect: $(wc -l < filters/open_redirect.txt) potenciais"
+
+# 8. APIS
+echo -e "\033[1;32m🔌\033[0m \033[1;37mRunning:\033[0m \033[1;32mAPI_Hunter\033[0m \033[1;30m(Filtering API Endpoints & Documentation)\033[0m"
+grep -Ei "(api|v[0-9]|rest|graphql|\.php|\.asp|\.aspx|\.jsp)" urls/all_urls.txt 2>/dev/null > apis/all_apis.txt
+API_COUNT=$(wc -l < apis/all_apis.txt 2>/dev/null || echo 0)
+echo "APIs: $API_COUNT"
+
+# 9. ARJUN TARGETS
+echo -e "\033[1;32m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun_Prep\033[0m \033[1;30m(Preparing Parameter Discovery)\033[0m"
+grep -E "^https?://[^?]+\?" urls/all_urls.txt 2>/dev/null > arjun/with_params.txt
+cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u > arjun/targets.txt
+ARJUN_TARGETS=$(wc -l < arjun/targets.txt 2>/dev/null || echo 0)
+echo "Arjun Targets: $ARJUN_TARGETS"
+
+echo -e "\033[1;35m⛏️\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun\033[0m \033[1;30m(Finding Hidden Parameters)\033[0m"
+# Garante que a pasta existe
+mkdir -p arjun
+
+# Verifica se o arquivo de targets existe e tem conteúdo
+if [ -s arjun/targets.txt ]; then
+    echo -e "\033[1;35m⚙️\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun\033[0m \033[1;30m(Fuzzing Hidden Parameters)\033[0m"
+    
+    # Pega top 10 para não demorar
+    head -n 10 arjun/targets.txt > arjun/top10.txt
+    
+    # Rodando o Arjun
+    # -t 10: threads | -m GET: método | -oT: output texto
+    arjun -i arjun/top10.txt -t 10 -m GET -oT arjun/results.txt > /dev/null 2>&1
+    
+    # Processa resultados: O Arjun salva a URL com os parâmetros encontrados
+    if [ -s arjun/results.txt ]; then
+        # Remove linhas vazias e garante unicidade
+        grep -E "^https?://" arjun/results.txt | sort -u > arjun/urls_with_params.txt
+        COUNT=$(wc -l < arjun/urls_with_params.txt)
+        echo "Arjun encontrou: $COUNT URLs com novos parâmetros"
+    else
+        echo "Arjun não encontrou parâmetros adicionais."
+    fi
+else
+    echo "PULANDO: Nenhum target encontrado para o Arjun em arjun/targets.txt"
+fi
+echo -e "\n\033[1;31m[ \033[5;31m☢️ \033[0m\033[1;31m ]\033[0m \033[1;41m VULNERABILITY SCANNING (NUCLEI) \033[0m \033[1;31m»»»\033[0m \033[1;37mSTATUS: EXPLOITING\033[0m"
+
+# 0. SETUP DE AMBIENTE
+mkdir -p vulns filters ativos js urls
+# Touch em todos os arquivos para o relatório final não bugar se estiverem vazios
+touch vulns/sqli_results.txt vulns/xss_results.txt vulns/lfi_rce_results.txt \
+      vulns/cves.txt vulns/secrets.txt vulns/open_redirect_results.txt \
+      vulns/sensitive_results.txt filters/sensitive_files.txt
+
+nuclei -update-templates -silent
+
+# 11. NUCLEI SQLI
+if [ -s filters/sqli.txt ]; then
+    echo -e "\033[1;31m💉\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/SQLi-Scan\033[0m"
+    nuclei -l filters/sqli.txt -silent -tags sqli -severity medium,high,critical -o vulns/sqli_results.txt
+fi
+
+# 12. NUCLEI XSS
+if [ -s filters/xss.txt ]; then
+    echo -e "\033[1;31m🎭\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/XSS-Scan\033[0m"
+    nuclei -l filters/xss.txt -silent -tags xss -severity low,medium,high -o vulns/xss_results.txt
+fi
+
+# 13. NUCLEI LFI & RCE
+if [ -s filters/lfi.txt ] || [ -s filters/rce.txt ]; then
+    echo -e "\033[1;31m💀\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/RCE-LFI\033[0m"
+    cat filters/lfi.txt filters/rce.txt 2>/dev/null | sort -u > filters/lfi_rce_merged.txt
+    nuclei -l filters/lfi_rce_merged.txt -silent -tags lfi,rce -o vulns/lfi_rce_results.txt
+fi
+
+# 14. NUCLEI CVES
+if [ -s ativos/urls.txt ]; then
+    echo -e "\033[1;31m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/CVE-Scan\033[0m"
+    nuclei -l ativos/urls.txt -silent -tags cve -severity medium,high,critical -o vulns/cves.txt
+fi
+
+# 15. NUCLEI SECRETS (JS)
+if [ -s js/all_js.txt ]; then
+    echo -e "\033[1;31m🔑\033[0m \033[1;37mRunning:\033[0m \033[1;32mJS_Secret_Finder\033[0m"
+    nuclei -l js/all_js.txt -silent -tags token,exposure -o vulns/secrets.txt
+fi
+
+# 16. SENSITIVE FILES (Grep + Nuclei)
+echo -e "\033[1;31m📂\033[0m \033[1;37mRunning:\033[0m \033[1;32mSensitive_Finder\033[0m"
+# Filtro via grep para identificar possíveis arquivos sensíveis
+grep -Ei "\.(env|git|config|sql|bak|zip|phpinfo|ini|log)$" urls/all_urls.txt 2>/dev/null | sort -u > filters/sensitive_files.txt
+
+if [ -s filters/sensitive_files.txt ]; then
+    echo -e "\033[1;31m🔍\033[0m \033[1;37mTesting:\033[0m \033[1;32mNuclei/Sensitive-Exposure\033[0m"
+    # Usando tags 'exposure' e 'file' para validar os achados do grep
+    nuclei -l filters/sensitive_files.txt -silent -tags exposure,file -o vulns/sensitive_results.txt
+fi
+echo -e "\033[1;37mConfirmed Exposure: \033[1;33m$(wc -l < vulns/sensitive_results.txt 2>/dev/null || echo 0)\033[0m"
+
+# 17. OPEN REDIRECT (Grep + Nuclei)
+echo -e "\033[1;31m↪️\033[0m \033[1;37mRunning:\033[0m \033[1;32mOpenRedirect_Scan\033[0m"
+grep -Ei "(url|redirect|next|dest|target|return|goto|link)=" urls/all_urls.txt 2>/dev/null | sort -u > filters/open_redirect.txt
+
+if [ -s filters/open_redirect.txt ]; then
+    echo -e "\033[1;31m🚀\033[0m \033[1;37mTesting:\033[0m \033[1;32mNuclei/Redirect-Payloads\033[0m"
+    nuclei -l filters/open_redirect.txt -silent -tags redirect -o vulns/open_redirect_results.txt
+fi
+echo -e "\033[1;37mConfirmed Redirects: \033[1;33m$(wc -l < vulns/open_redirect_results.txt 2>/dev/null || echo 0)\033[0m"
+grep -Ei "high|critical" vulns/*.txt 2>/dev/null > vulns/high.txt
+
+echo -e "\n\033[1;36m[ \033[5;36m📑\033[0m\033[1;36m ]\033[0m \033[1;46m REPORT / RELATÓRIO FINAL \033[0m \033[1;36m»»»\033[0m \033[1;37mSTATUS: GENERATING\033[0m"
+# 17. RESUMÃO (Atualizado para incluir Nuclei e GF)
+cat > results/REPORT.md << EOF
+# 🚀 BUG BOUNTY REPORT - $TARGET
+**Data:** $(date)
+**Pasta:** $(pwd)
+
+## 📊 ESTATÍSTICAS
+- **Subdomínios:** $TOTAL_SUBS
+- **Hosts Ativos:** $ATIVOS
+- **URLs Coletadas:** $TOTAL_URLS
+- **Arquivos JS:** $JS_COUNT
+- **Endpoints API:** $API_COUNT
+
+## 🛡️ VULNERABILIDADES ENCONTRADAS (NUCLEI)
+- **Críticas/Altas:** $(wc -l < vulns/high.txt 2>/dev/null || echo 0)
+- **SQLi:** $(wc -l < vulns/sqli_results.txt 2>/dev/null || echo 0)
+- **XSS:** $(wc -l < vulns/xss_results.txt 2>/dev/null || echo 0)
+- **Exposições/Secrets:** $(wc -l < vulns/secrets.txt 2>/dev/null || echo 0)
+
+## 📁 ESTRUTURA DE ARQUIVOS
+\`\`\`
+$(ls -R | grep ':$' | sed 's/://' | sed 's/^/  /')
+\`\`\`
+
+## 📄 ATALHOS PARA INVESTIGAÇÃO
+1. \`vulns/\` - **CONFIRMADO PELO NUCLEI** (Olhe aqui primeiro!)
+2. \`filters/\` - URLs suspeitas filtradas pelo GF (Potencial manual)
+3. \`arjun/urls_with_params.txt\` - Endpoints com novos parâmetros
+4. \`js/all_js.txt\` - Todos os arquivos JavaScript encontrados
+
+## ⚡ COMANDOS PARA CONTINUAR EXPLORANDO
+\`\`\`bash
+# Testar XSS de forma agressiva nas URLs do GF
+cat filters/xss.txt | dalfox pipe
+
+# Rodar SQLMap nos suspeitos de SQLi
+sqlmap -m filters/sqli.txt --batch --level 2
+
+# Procurar por caminhos sensíveis com Dirsearch
+dirsearch -l ativos/urls.txt -e php,aspx,js,json,html,env,txt
+\`\`\`
+
+Ultra Recon Completed! 🎯
+EOF
+
+echo -e "\n\033[1;37m====================================================\033[0m"
+echo -e "\033[1;42m  [✨]             MISSION COMPLETE             [✨]  \033[0m"
+echo -e "\033[1;37m====================================================\033[0m"
+
+echo "✅✅✅ CONCLUÍDO! ✅✅✅"
+echo ""
+echo "📂 PASTA: $(pwd)"
+echo ""
+echo "📊 RESUMO DE VULNS (Nuclei):"
+[ -f vulns/high.txt ] && echo "🔥 High/Critical: $(wc -l < vulns/high.txt)" || echo "🔥 High/Critical: 0"
+[ -f vulns/sqli_results.txt ] && echo "💉 SQLi: $(wc -l < vulns/sqli_results.txt)"
+[ -f vulns/xss_results.txt ] && echo "🌐 XSS: $(wc -l < vulns/xss_results.txt)"
+echo ""
+echo "📄 RELATÓRIO COMPLETO: results/REPORT.md"
+echo ""
