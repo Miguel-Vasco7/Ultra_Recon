@@ -2,11 +2,10 @@
 
 Este script instala todas as dependências que o seu código chama (`subfinder`, `nuclei`, `gau`, `arjun`, etc.).
 
-#!/bin/bash
 # install.sh - Instalador de dependências para ULTRA RECON
 
 echo -e "\033[1;34m[*] Instalando dependências do sistema...\033[0m"
-
+#!/bin/bash
 sudo apt-get update
 sudo apt-get install -y gold-bug jq python3 python3-pip curl git-core
 
