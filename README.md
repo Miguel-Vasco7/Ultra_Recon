@@ -30,6 +30,8 @@ go install -v github.com/tomnomnom/gf@latest
 echo -e "\033[1;34m[*] Instalando ferramentas via Python...\033[0m"
 
 pip3 install arjun
+pip3 install uro
+export PATH="$HOME/.local/bin:$PATH"
 
 echo -e "\033[1;34m[*] Configurando GF Patterns...\033[0m"
 
