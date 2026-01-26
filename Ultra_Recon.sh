@@ -82,32 +82,27 @@ echo "✅ ATIVOS: $ATIVOS"
 # --- NOVO BLOCO KATANA (FORCE MODE) ---
 echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
 
-# Agora ele sempre vai tentar, nem que seja no alvo principal
+# Rodando o Katana
+# ... (parte de cima do script igual)
+# --- BLOCO URL MINING (OTIMIZADO) ---
+echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
+
+# Coleta de todas as fontes
 katana -list ativos/urls.txt -silent -js-crawl -kf all -c 15 -d 3 -o urls/katana.txt
-
-# Se o Katana ainda assim falhar, usamos o que veio do Wayback/GAU
-cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | sort -u > urls/all_urls.txt
-echo -e "\n\033[1;33m[ \033[5;33m$$$\033[0m\033[1;33m ]\033[0m \033[1;43m EXTRACTING ENDPOINTS & URLS \033[0m \033[1;33m»»»\033[0m \033[1;37mSTATUS: MINING\033[0m"
-
-# 5. WAYBACKURLS
-echo -e "\033[1;33m📦\033[0m \033[1;37mRunning:\033[0m \033[1;32mWaybackurls\033[0m \033[1;30m(Fetching Historical Data)\033[0m"
 waybackurls "$TARGET" > urls/wayback.txt
-echo "Wayback: $(wc -l < urls/wayback.txt) URLs"
-
-# 6. GAU (Get All URLs)
-echo -e "\033[1;33m🛸\033[0m \033[1;37mRunning:\033[0m \033[1;32mGAU\033[0m \033[1;30m(Getting All URLs)\033[0m"
 gau "$TARGET" 2>/dev/null > urls/gau.txt
-echo "GAU: $(wc -l < urls/gau.txt) URLs"    
 
-# EXTRA: Mesclar e remover duplicatas
-cat urls/wayback.txt urls/gau.txt | sort -u > urls/all_urls.txt
-echo "Total únicas: $(wc -l < urls/all_urls.txt) URLs"
+echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 
+# A PENEIRA: Junta tudo, limpa com URO e salva a base final
+cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
 
-# JUNTAR URLS
-cat urls/*.txt 2>/dev/null | sort -u > urls/all_urls.txt
-TOTAL_URLS=$(wc -l < urls/all_urls.txt 2>/dev/null || echo 0)
-echo "✅ TOTAL URLS: $TOTAL_URLS"
+# Remove a contagem antiga e usa a nova
+TOTAL_URLS=$(wc -l < urls/all_urls.txt)
+echo "✅ TOTAL URLS ÚNICAS: $TOTAL_URLS"
+
+# --- AGORA SEGUEM OS FILTROS (GF, JS, ETC) ---
+# Use o all_urls.txt (que já está limpo) para tudo abaixo
 
 echo -e "\033[1;32m🔍\033[0m \033[1;37mRunning:\033[0m \033[1;32mGrep/Sorting\033[0m \033[1;30m(Extracting Potential Vulns)\033[0m"
 # 7. JS FILES
@@ -190,32 +185,32 @@ nuclei -update-templates -silent
 # 11. NUCLEI SQLI
 if [ -s filters/sqli.txt ]; then
     echo -e "\033[1;31m💉\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/SQLi-Scan\033[0m"
-    nuclei -l filters/sqli.txt -silent -tags sqli -severity medium,high,critical -o vulns/sqli_results.txt
+    nuclei -l filters/sqli.txt -tags sqli -severity medium,high,critical -o vulns/sqli_results.txt
 fi
 
 # 12. NUCLEI XSS
 if [ -s filters/xss.txt ]; then
     echo -e "\033[1;31m🎭\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/XSS-Scan\033[0m"
-    nuclei -l filters/xss.txt -silent -tags xss -severity low,medium,high -o vulns/xss_results.txt
+    nuclei -l filters/xss.txt  -tags xss -severity low,medium,high -o vulns/xss_results.txt
 fi
 
 # 13. NUCLEI LFI & RCE
 if [ -s filters/lfi.txt ] || [ -s filters/rce.txt ]; then
     echo -e "\033[1;31m💀\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/RCE-LFI\033[0m"
     cat filters/lfi.txt filters/rce.txt 2>/dev/null | sort -u > filters/lfi_rce_merged.txt
-    nuclei -l filters/lfi_rce_merged.txt -silent -tags lfi,rce -o vulns/lfi_rce_results.txt
+    nuclei -l filters/lfi_rce_merged.txt  -tags lfi,rce -o vulns/lfi_rce_results.txt
 fi
 
 # 14. NUCLEI CVES
 if [ -s ativos/urls.txt ]; then
     echo -e "\033[1;31m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/CVE-Scan\033[0m"
-    nuclei -l ativos/urls.txt -silent -tags cve -severity medium,high,critical -o vulns/cves.txt
+    nuclei -l ativos/urls.txt  -tags cve -severity medium,high,critical -o vulns/cves.txt
 fi
 
 # 15. NUCLEI SECRETS (JS)
 if [ -s js/all_js.txt ]; then
     echo -e "\033[1;31m🔑\033[0m \033[1;37mRunning:\033[0m \033[1;32mJS_Secret_Finder\033[0m"
-    nuclei -l js/all_js.txt -silent -tags token,exposure -o vulns/secrets.txt
+    nuclei -l js/all_js.txt  -tags token,exposure -o vulns/secrets.txt
 fi
 
 # 16. SENSITIVE FILES (Grep + Nuclei)
@@ -226,7 +221,7 @@ grep -Ei "\.(env|git|config|sql|bak|zip|phpinfo|ini|log)$" urls/all_urls.txt 2>/
 if [ -s filters/sensitive_files.txt ]; then
     echo -e "\033[1;31m🔍\033[0m \033[1;37mTesting:\033[0m \033[1;32mNuclei/Sensitive-Exposure\033[0m"
     # Usando tags 'exposure' e 'file' para validar os achados do grep
-    nuclei -l filters/sensitive_files.txt -silent -tags exposure,file -o vulns/sensitive_results.txt
+    nuclei -l filters/sensitive_files.txt -tags exposure,file -o vulns/sensitive_results.txt
 fi
 echo -e "\033[1;37mConfirmed Exposure: \033[1;33m$(wc -l < vulns/sensitive_results.txt 2>/dev/null || echo 0)\033[0m"
 
@@ -236,7 +231,7 @@ grep -Ei "(url|redirect|next|dest|target|return|goto|link)=" urls/all_urls.txt 2
 
 if [ -s filters/open_redirect.txt ]; then
     echo -e "\033[1;31m🚀\033[0m \033[1;37mTesting:\033[0m \033[1;32mNuclei/Redirect-Payloads\033[0m"
-    nuclei -l filters/open_redirect.txt -silent -tags redirect -o vulns/open_redirect_results.txt
+    nuclei -l filters/open_redirect.txt  -tags redirect -o vulns/open_redirect_results.txt
 fi
 echo -e "\033[1;37mConfirmed Redirects: \033[1;33m$(wc -l < vulns/open_redirect_results.txt 2>/dev/null || echo 0)\033[0m"
 grep -Ei "high|critical" vulns/*.txt 2>/dev/null > vulns/high.txt
