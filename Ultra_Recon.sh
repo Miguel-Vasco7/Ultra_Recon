@@ -47,19 +47,34 @@ subfinder -d "$TARGET" -silent -o recon/subs1.txt
 echo "Subs1: $(wc -l recon/subs1.txt)"
 
 # 2. AMASS
-echo -e "\033[1;35m🔥\033[0m \033[1;37mRunning:\033[0m \033[1;32mAmass\033[0m \033[1;30m(Active Enum Level 2)\033[0m"
-amass enum -passive -d "$TARGET" -silent -o recon/subs2.txt
-echo "Subs2: $(wc -l recon/subs2.txt)"
+echo -e "\033[1;35m🔥\033[0m \033[1;37mRunning:\033[0m \033[1;32mAmass\033[0m"
 
+# Rodamos o Amass
+amass enum -passive -d "$TARGET" -silent -nocolor -o recon/subs2.txt > /dev/null 2>&1
+
+# SÓ entra aqui se o arquivo existir (-f) E não estiver vazio (-s)
+if [ -s recon/subs2.txt ]; then
+    # Limpa o lixo de cores se o Amass ignorar o -nocolor
+    sed -i 's/\x1b\[[0-9;]*m//g' recon/subs2.txt
+    # Agora sim o wc -l funciona sem erro
+    echo "Subs2: $(wc -l < recon/subs2.txt)"
+else
+    # Se o Amass falhou ou não achou nada, avisamos e criamos o arquivo vazio
+    echo "Subs2: 0"
+    touch recon/subs2.txt
+fi
 # 3. CRT.SH DIRETO
 echo -e "\033[1;31m💀\033[0m \033[1;37mRunning:\033[0m \033[1;32mPureDNS/ShuffleDNS\033[0m \033[1;30m(Bruteforce Level 3)\033[0m"
 curl -s "https://crt.sh/?q=%25.$TARGET&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' | sort -u > recon/subs3.txt
 echo "Subs3: $(wc -l recon/subs3.txt)"
 
 # UNIR TUDO
-cat recon/subs*.txt | sort -u > recon/all_subs.txt
+# UNIR TUDO COM FILTRO DE PUREZA
+# O grep garante que só passem linhas que pareçam domínios (evita linhas vazias ou lixo)
+# UNIR TUDO COM FILTRO DE PUREZA MÁXIMA
+cat recon/subs*.txt | awk '{print $1}' | tr -d '\r' | sort -u | grep -v '^$' | grep "\." > recon/all_subs.txt
 TOTAL_SUBS=$(wc -l < recon/all_subs.txt)
-echo "✅ TODOS SUBS: $TOTAL_SUBS"
+echo "✅ TODOS SUBS LIMPOS: $TOTAL_SUBS"
 
 echo -e "\n\033[1;36m[ \033[5;36m\033[0m\033[1;36m ]\033[0m \033[1;46m CHECKING ALIVE TARGETS \033[0m \033[1;36mÂ»Â»Â»\033[0m \033[1;37mSTATUS: VALIDATING\033[0m"
 # HTTPX COMPLETO
@@ -133,7 +148,7 @@ echo "Redirect: $(wc -l < filters/open_redirect.txt) potenciais"
 
 # 8. APIS
 echo -e "\033[1;32m🔌\033[0m \033[1;37mRunning:\033[0m \033[1;32mAPI_Hunter\033[0m \033[1;30m(Filtering API Endpoints & Documentation)\033[0m"
-grep -Ei "(api|v[0-9]|rest|graphql|\.php|\.asp|\.aspx|\.jsp)" urls/all_urls.txt 2>/dev/null > apis/all_apis.txt
+grep -Ei "\.(php|asp|aspx|jsp|json|xml|action|do|ashx|axd)|(api|v[0-9]|rest|graphql|swagger|v[0-9]\.[0-9])" urls/all_urls.txt | grep -viE "\.(jpg|jpeg|png|gif|css|js|woff|woff2|ico|svg|pdf|exe|bin)" > apis/all_apis.txt
 API_COUNT=$(wc -l < apis/all_apis.txt 2>/dev/null || echo 0)
 echo "APIs: $API_COUNT"
 
@@ -153,11 +168,11 @@ if [ -s arjun/targets.txt ]; then
     echo -e "\033[1;35m⚙️\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun\033[0m \033[1;30m(Fuzzing Hidden Parameters)\033[0m"
     
     # Pega top 10 para não demorar
-    head -n 10 arjun/targets.txt > arjun/top10.txt
+    head -n 50 arjun/targets.txt > arjun/top10.txt
     
     # Rodando o Arjun
     # -t 10: threads | -m GET: método | -oT: output texto
-    arjun -i arjun/top10.txt -t 10 -m GET -oT arjun/results.txt > /dev/null 2>&1
+    arjun -i arjun/top10.txt -t 30 -m GET -oT arjun/results.txt > /dev/null 2>&1
     
     # Processa resultados: O Arjun salva a URL com os parâmetros encontrados
     if [ -s arjun/results.txt ]; then
@@ -171,6 +186,8 @@ if [ -s arjun/targets.txt ]; then
 else
     echo "PULANDO: Nenhum target encontrado para o Arjun em arjun/targets.txt"
 fi
+
+
 echo -e "\n\033[1;31m[ \033[5;31m☢️ \033[0m\033[1;31m ]\033[0m \033[1;41m VULNERABILITY SCANNING (NUCLEI) \033[0m \033[1;31m»»»\033[0m \033[1;37mSTATUS: EXPLOITING\033[0m"
 
 # 0. SETUP DE AMBIENTE
