@@ -1,13 +1,9 @@
-#!/bin/bash
-# BUG BOUNTY ULTIMATE - CERTO QUE FUNCIONA
 
 #!/bin/bash
 
 # --- CORES ---
 #!/bin/bash
 
-# --- CORES ---
-# --- CORES ---
 ROSA='\033[035;1m'
 BRANCO='\033[037;1m'
 RESET='\033[0m'
@@ -50,7 +46,7 @@ echo "Subs1: $(wc -l recon/subs1.txt)"
 echo -e "\033[1;35m🔥\033[0m \033[1;37mRunning:\033[0m \033[1;32mAmass\033[0m"
 
 # Rodamos o Amass
-amass enum -passive -d "$TARGET" -silent -nocolor -o recon/subs2.txt > /dev/null 2>&1
+amass enum -passive -d "$TARGET"  -timeout 5 -nocolor -o recon/subs2.txt > /dev/null 2>&1
 
 # SÓ entra aqui se o arquivo existir (-f) E não estiver vazio (-s)
 if [ -s recon/subs2.txt ]; then
@@ -80,37 +76,50 @@ echo -e "\n\033[1;36m[ \033[5;36m\033[0m\033[1;36m ]\033[0m \033[1;46m CHECKING 
 # HTTPX COMPLETO
 # --- NOVO BLOCO HTTPX (CORRIGIDO) ---
 echo -e "\033[1;36m📡\033[0m \033[1;37mRunning:\033[0m \033[1;32mHTTPX\033[0m"
-# Adicionei -p 80,443,8080,8443 para garantir
-httpx -l recon/all_subs.txt -silent -p 80,443,8080,8443 -status-code -title -o ativos/full.txt
+# httpx
+# Executa o httpx salvando tudo no full.txt (para seu log)
+httpx -l recon/all_subs.txt -silent -status-code -title -o ativos/full.txt
 
-# Se o full.txt estiver vazio, vamos forçar o domínio principal para o scan não parar
-if [ ! -s ativos/full.txt ]; then
+# Extrai APENAS as URLs limpas para o urls.txt
+cat ativos/full.txt | awk '{print $1}' > ativos/urls.txt
+
+# Se o urls.txt estiver vazio, força o target
+if [ ! -s ativos/urls.txt ]; then
     echo "http://$TARGET" > ativos/urls.txt
     echo "https://$TARGET" >> ativos/urls.txt
-else
-    cut -d' ' -f1 ativos/full.txt > ativos/urls.txt
 fi
 
 ATIVOS=$(wc -l < ativos/urls.txt)
 echo "✅ ATIVOS: $ATIVOS"
-
-# --- NOVO BLOCO KATANA (FORCE MODE) ---
-echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
 
 # Rodando o Katana
 # ... (parte de cima do script igual)
 # --- BLOCO URL MINING (OTIMIZADO) ---
 echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
 
-# Coleta de todas as fontes
-katana -list ativos/urls.txt -silent -js-crawl -kf all -c 15 -d 3 -o urls/katana.txt
-waybackurls "$TARGET" > urls/wayback.txt
-gau "$TARGET" 2>/dev/null > urls/gau.txt
+## Coleta de todas as fontes
+#katana -list ativos/urls.txt -silent -js-crawl -kf all -c 50 -d 3 -o urls/katana.txt
+#waybackurls "$TARGET" > urls/wayback.txt
+#gau "$TARGET" 2>/dev/null > urls/gau.txt
+## Coleta de todas as fontes
+# 1. Katana (Garante que não tem o -t escondido no final da linha)
+katana -list ativos/urls.txt  -js-crawl -kf all -c 50 -d 3 -o urls/katana.txt
+
+
+# 3. GAU (Removi qualquer flag extra e redirecionei erros)
+gau "$TARGET" --subs --retries 3 2>/dev/null > urls/gau.txt
 
 echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 
+# Junta e limpa
+#cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
+
+#echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
+
 # A PENEIRA: Junta tudo, limpa com URO e salva a base final
-cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
+# Usa o curinga *.txt para pegar tudo que o GAU e Katana geraram sem erro
+cat urls/*.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
+
 
 # Remove a contagem antiga e usa a nova
 TOTAL_URLS=$(wc -l < urls/all_urls.txt)
@@ -148,14 +157,18 @@ echo "Redirect: $(wc -l < filters/open_redirect.txt) potenciais"
 
 # 8. APIS
 echo -e "\033[1;32m🔌\033[0m \033[1;37mRunning:\033[0m \033[1;32mAPI_Hunter\033[0m \033[1;30m(Filtering API Endpoints & Documentation)\033[0m"
-grep -Ei "\.(php|asp|aspx|jsp|json|xml|action|do|ashx|axd)|(api|v[0-9]|rest|graphql|swagger|v[0-9]\.[0-9])" urls/all_urls.txt | grep -viE "\.(jpg|jpeg|png|gif|css|js|woff|woff2|ico|svg|pdf|exe|bin)" > apis/all_apis.txt
+# 8. APIS
+grep -Ei "\.(php|asp|aspx|jsp|json|xml|action|do|ashx|axd)|(api|v[0-9]|rest|graphql|swagger|v[0-9]\.[0-9])" urls/all_urls.txt | grep -viE "\.(jpg|jpeg|png|gif|css|woff|woff2|ico|svg|pdf|exe|bin)" > apis/all_apis.txt
 API_COUNT=$(wc -l < apis/all_apis.txt 2>/dev/null || echo 0)
 echo "APIs: $API_COUNT"
+
+# Limpa e garante que só pegamos domínios ativos para o Arjun não travar
 
 # 9. ARJUN TARGETS
 echo -e "\033[1;32m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun_Prep\033[0m \033[1;30m(Preparing Parameter Discovery)\033[0m"
 grep -E "^https?://[^?]+\?" urls/all_urls.txt 2>/dev/null > arjun/with_params.txt
-cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u > arjun/targets.txt
+#cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u > arjun/targets.txt
+cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u | grep -f ativos/urls.txt > arjun/targets.txt
 ARJUN_TARGETS=$(wc -l < arjun/targets.txt 2>/dev/null || echo 0)
 echo "Arjun Targets: $ARJUN_TARGETS"
 
@@ -314,3 +327,4 @@ echo "📊 RESUMO DE VULNS (Nuclei):"
 echo ""
 echo "📄 RELATÓRIO COMPLETO: results/REPORT.md"
 echo ""
+
