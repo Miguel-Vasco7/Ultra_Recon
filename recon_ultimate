@@ -1,8 +1,6 @@
-
 #!/bin/bash
 
-# --- CORES ---
-#!/bin/bash
+# --- CORES ---s
 
 ROSA='\033[035;1m'
 BRANCO='\033[037;1m'
@@ -29,7 +27,7 @@ echo -e "\n${ROSA}[*] Criando diretório:${RESET} $DIR_NAME"
 
 mkdir -p "$DIR_NAME"
 cd "$DIR_NAME" || exit 1
-mkdir -p {recon,ativos,urls,js,apis,arjun,vulns,results,katana,filters}
+mkdir -p {recon,ativos,urls,js,apis,arjun,vulns,results,filters}
 
 # --- DAQUI PARA BAIXO O SEU CÓDIGO SEGUE ---
 # (O resto das fases que você mandou estão tecnicamente corretas!)
@@ -42,23 +40,7 @@ echo -e "\033[1;34m⚡\033[0m \033[1;37mRunning:\033[0m \033[1;32mSubfinder\033[
 subfinder -d "$TARGET" -silent -o recon/subs1.txt
 echo "Subs1: $(wc -l recon/subs1.txt)"
 
-# 2. AMASS
-echo -e "\033[1;35m🔥\033[0m \033[1;37mRunning:\033[0m \033[1;32mAmass\033[0m"
 
-# Rodamos o Amass
-amass enum -passive -d "$TARGET"  -timeout 5 -nocolor -o recon/subs2.txt > /dev/null 2>&1
-
-# SÓ entra aqui se o arquivo existir (-f) E não estiver vazio (-s)
-if [ -s recon/subs2.txt ]; then
-    # Limpa o lixo de cores se o Amass ignorar o -nocolor
-    sed -i 's/\x1b\[[0-9;]*m//g' recon/subs2.txt
-    # Agora sim o wc -l funciona sem erro
-    echo "Subs2: $(wc -l < recon/subs2.txt)"
-else
-    # Se o Amass falhou ou não achou nada, avisamos e criamos o arquivo vazio
-    echo "Subs2: 0"
-    touch recon/subs2.txt
-fi
 # 3. CRT.SH DIRETO
 echo -e "\033[1;31m💀\033[0m \033[1;37mRunning:\033[0m \033[1;32mPureDNS/ShuffleDNS\033[0m \033[1;30m(Bruteforce Level 3)\033[0m"
 curl -s "https://crt.sh/?q=%25.$TARGET&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' | sort -u > recon/subs3.txt
@@ -98,17 +80,15 @@ echo "✅ ATIVOS: $ATIVOS"
 echo -e "\n\033[1;31m[!] INITIATING DEEP ENDPOINT MINING...\033[0m"
 
 ## Coleta de todas as fontes
-#katana -list ativos/urls.txt -silent -js-crawl -kf all -c 50 -d 3 -o urls/katana.txt
-#waybackurls "$TARGET" > urls/wayback.txt
-#gau "$TARGET" 2>/dev/null > urls/gau.txt
 ## Coleta de todas as fontes
 # 1. Katana (Garante que não tem o -t escondido no final da linha)
-katana -list ativos/urls.txt  -js-crawl -kf all -c 50 -d 3 -o urls/katana.txt
-
+#katana -list ativos/urls.txt  -js-crawl -kf all -c 50 -d 3 -o urls/katana.txt
+katana -list ativos/urls.txt -js-crawl -kf all -c 50 -d 2 -o urls/katana.txt
 
 # 3. GAU (Removi qualquer flag extra e redirecionei erros)
-gau "$TARGET" --subs --retries 3 2>/dev/null > urls/gau.txt
+#gau "$TARGET" --subs --retries 3 2>/dev/null > urls/gau.txt
 
+gau "$TARGET" --subs --retries 3 2>/dev/null | sort -u > urls/gau.txt
 echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 
 # Junta e limpa
@@ -232,10 +212,10 @@ if [ -s filters/lfi.txt ] || [ -s filters/rce.txt ]; then
 fi
 
 # 14. NUCLEI CVES
-if [ -s ativos/urls.txt ]; then
-    echo -e "\033[1;31m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/CVE-Scan\033[0m"
-    nuclei -l ativos/urls.txt  -tags cve -severity medium,high,critical -o vulns/cves.txt
-fi
+#if [ -s ativos/urls.txt ]; then
+    #echo -e "\033[1;31m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mNuclei/CVE-Scan\033[0m"
+    #nuclei -l ativos/urls.txt  -tags cve -severity medium,high,critical -o vulns/cves.txt
+#fi
 
 # 15. NUCLEI SECRETS (JS)
 if [ -s js/all_js.txt ]; then
