@@ -1,6 +1,8 @@
 Aqui está a versão atualizada e completa do seu **README.md**. Adicionei a seção de instalação automática (usando o seu script de dependências) e as instruções de como você deve colocar a foto da ferramenta para ela aparecer no GitHub.
 # ULTRA RECON 🚀
 ![Tool Preview](preview.png)
+
+
 **Automated Web Pentest Reconnaissance Framework**
 Developed by **Miguel Vasco**, Ultra Recon is a streamlined automation suite designed for high-efficiency reconnaissance. It maps attack surfaces, filters potential vulnerabilities using logic-based patterns, and validates findings with template-based scanning.
 > **Note:** To display your own screenshot, save your terminal image as preview.png in the root folder of your project.
