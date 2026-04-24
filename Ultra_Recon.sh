@@ -93,9 +93,6 @@ katana -list ativos/urls.txt -js-crawl -kf all -c 50 -d 2 -o urls/katana.txt
 gau "$TARGET" --subs --retries 3 2>/dev/null | sort -u > urls/gau.txt
 echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 
-# Junta e limpa
-#cat urls/wayback.txt urls/gau.txt urls/katana.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
-
 #echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 
 # A PENEIRA: Junta tudo, limpa com URO e salva a base final
