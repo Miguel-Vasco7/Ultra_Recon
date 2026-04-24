@@ -62,9 +62,3 @@ Ultra Recon organizes results into specialized directories for easy analysis:
 
 ## ⚖️ Disclaimer
 *This tool is intended for educational purposes and authorized security auditing only. The developer is not responsible for any misuse or damage caused by this program.*
-### 💡 Como adicionar a sua foto:
-Para que a imagem apareça onde está escrito ****:
- 1. Tire um print do terminal rodando sua ferramenta.
- 2. Renomeie esse arquivo para preview.png.
- 3. Coloque esse arquivo na **mesma pasta** onde está o seu arquivo README.md.
- 4. Quando você der o git push para o GitHub, a imagem será carregada automaticamente no topo da página.
