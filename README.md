@@ -1,7 +1,3 @@
-Here is the polished, fully English version of your **README.md**. I’ve fixed the numbering, added the missing code blocks for the installation section, and refined the technical descriptions.
-
----
-
 # 🚀 ULTRA RECON - Miguel Vasco
 ![Tool Preview](preview.png)
 
