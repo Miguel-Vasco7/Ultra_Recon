@@ -16,29 +16,24 @@ The tool follows a professional reconnaissance pipeline:
 ## 🚀 Getting Started
 ### 1. Prerequisites
 This tool is designed for Linux (Kali, Parrot, or Ubuntu). You will need sudo privileges for the initial setup.
-### 2. Automatic Installation
+### 1. Enviroment Setup (Recommeded)
 You can install all necessary Go, Python, and System dependencies using the built-in installer:
-```bash
-# Clone the repository
-https://github.com/Miguel-Vasco7/Recon_Ultra.git
-# Run the dependency installer
-chmod +x install_dependencies.sh
-./install_dependencies.sh
-```
-### 3. Environment Setup (Recommended)
-After running the installer, it is recommended to use a Python Virtual Environment for specific tasks:
-```bash
-# Create and activate the environment
+
+git clone https://github.com/Miguel-Vasco7/Recon_Ultra.git
+cd Recon_Ultra
+
 python3 -m venv venv
 source venv/bin/activate
+
+chmod +x install_dependencies.sh
+./install_dependencies.sh
 ```
 ## 💻 Usage
 Once the installation is complete, refresh your shell and start scanning:
 ```bash
-# Reload your profile
 source ~/.bashrc
-# Run Ultra Recon
-./ultra_recon.sh example.com
+
+./ultra_recon.sh exemplo.com
 ```
 ## 📁 Output Structure
 Ultra Recon organizes results into specialized directories for easy analysis:
