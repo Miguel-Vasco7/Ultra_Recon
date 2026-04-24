@@ -9,7 +9,7 @@ Developed by **Miguel Vasco**, Ultra Recon is a streamlined automation suite des
 The tool follows a professional reconnaissance pipeline:
 1.  **Passive Recon:** Subdomain discovery via Subfinder and Crt.sh.
 2.  **Validation:** Live host checking using HTTPX.
-3.  **Endpoint Mining:** Deep crawling with Katana, Wayback Machine, and GAU.
+3.  **Endpoint Mining:** Deep crawling with Katana, and GAU.
 4.  **Parameter Discovery:** Hidden parameter fuzzing with Arjun.
 5.  **Smart Filtering:** Pattern matching with GF and custom Grep logic.
 6.  **Vulnerability Scanning:** Automated validation via Nuclei.
