@@ -17,7 +17,7 @@ logo() {
     clear
     echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
     echo -e " ${BRANCO} ULTRA RECON - INSTALADOR DE DEPENDÊNCIAS${RESET}"
-    echo -e " ${ROSA} Miguel Vasco | Developer & Security Researcher ${RESET}"
+    echo -e " ${ROSA} Miguel Vasco | Backend Developer & Web Pentester ${RESET}"
     echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
     echo ""
 }
