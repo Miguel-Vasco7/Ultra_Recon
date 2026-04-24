@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # --- CORES ---s
@@ -15,7 +16,7 @@ clear
 # --- HEADER (Agora com $TARGET funcionando) ---
 echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
 echo -e "  ${BRANCO}                   ULTRA RECON${RESET}"
-echo -e "  ${ROSA}        Miguel Vasco | Developer & Security Researcher     ${RESET}"
+echo -e "  ${ROSA}        Miguel Vasco | Backend Developer & Web Pentester     ${RESET}"
 echo -e "${ROSA}#------------------------------------------------------------#${RESET}"
 echo -e "\n${ROSA}[+]${RESET} ${BRANCO}Target:${RESET}  $TARGET"
 echo -e "${ROSA}[+]${RESET} ${BRANCO}Started:${RESET} $(date +%H:%M:%S)"
@@ -29,12 +30,11 @@ mkdir -p "$DIR_NAME"
 cd "$DIR_NAME" || exit 1
 mkdir -p {recon,ativos,urls,js,apis,arjun,vulns,results,filters}
 
-# --- DAQUI PARA BAIXO O SEU CÓDIGO SEGUE ---
-# (O resto das fases que você mandou estão tecnicamente corretas!)
 echo -e "\n📂 ESTRUTURA:"
 ls -la
 
 echo -e "\033[1;31m[ \033[5;31m\033[0m\033[1;31m ]\033[0m \033[1;41m SCANNING SUBDOMAINS \033[0m \033[1;31m»»»\033[0m \033[1;37mTARGET: $TARGET\033[0m"
+
 # 1. SUBFINDER FORTE
 echo -e "\033[1;34m⚡\033[0m \033[1;37mRunning:\033[0m \033[1;32mSubfinder\033[0m \033[1;30m(Passive Recon)\033[0m"
 subfinder -d "$TARGET" -silent -o recon/subs1.txt
@@ -49,17 +49,19 @@ echo "Subs3: $(wc -l recon/subs3.txt)"
 # UNIR TUDO
 # UNIR TUDO COM FILTRO DE PUREZA
 # O grep garante que só passem linhas que pareçam domínios (evita linhas vazias ou lixo)
-# UNIR TUDO COM FILTRO DE PUREZA MÁXIMA
+# UNIR TUDO COM FILTRO DE MÁXIMA PRECISÃO
 cat recon/subs*.txt | awk '{print $1}' | tr -d '\r' | sort -u | grep -v '^$' | grep "\." > recon/all_subs.txt
 TOTAL_SUBS=$(wc -l < recon/all_subs.txt)
 echo "✅ TODOS SUBS LIMPOS: $TOTAL_SUBS"
 
 echo -e "\n\033[1;36m[ \033[5;36m\033[0m\033[1;36m ]\033[0m \033[1;46m CHECKING ALIVE TARGETS \033[0m \033[1;36mÂ»Â»Â»\033[0m \033[1;37mSTATUS: VALIDATING\033[0m"
+
 # HTTPX COMPLETO
 # --- NOVO BLOCO HTTPX (CORRIGIDO) ---
 echo -e "\033[1;36m📡\033[0m \033[1;37mRunning:\033[0m \033[1;32mHTTPX\033[0m"
+
 # httpx
-# Executa o httpx salvando tudo no full.txt (para seu log)
+# Executa o httpx salvando tudo no full.txt 
 httpx -l recon/all_subs.txt -silent -status-code -title -o ativos/full.txt
 
 # Extrai APENAS as URLs limpas para o urls.txt
@@ -101,14 +103,15 @@ echo -e "\n\033[1;33m[ $$$ ] CLEANING WITH URO \033[1;33m»»»\033[0m"
 cat urls/*.txt 2>/dev/null | uro | sort -u > urls/all_urls.txt
 
 
-# Remove a contagem antiga e usa a nova
+# Remove a contagem antiga e usEI a nova
 TOTAL_URLS=$(wc -l < urls/all_urls.txt)
 echo "✅ TOTAL URLS ÚNICAS: $TOTAL_URLS"
 
 # --- AGORA SEGUEM OS FILTROS (GF, JS, ETC) ---
-# Use o all_urls.txt (que já está limpo) para tudo abaixo
+# IMPLEMENTEI o all_urls.txt (que já está limpo) para tudo abaixO
 
 echo -e "\033[1;32m🔍\033[0m \033[1;37mRunning:\033[0m \033[1;32mGrep/Sorting\033[0m \033[1;30m(Extracting Potential Vulns)\033[0m"
+
 # 7. JS FILES
 echo -e "\033[1;32m📜\033[0m \033[1;37mRunning:\033[0m \033[1;32mJS_Filter\033[0m \033[1;30m(Extracting JavaScript Endpoints)\033[0m"
 grep -i "\.js$" urls/all_urls.txt 2>/dev/null > js/all_js.txt
@@ -147,6 +150,7 @@ echo "APIs: $API_COUNT"
 # 9. ARJUN TARGETS
 echo -e "\033[1;32m🎯\033[0m \033[1;37mRunning:\033[0m \033[1;32mArjun_Prep\033[0m \033[1;30m(Preparing Parameter Discovery)\033[0m"
 grep -E "^https?://[^?]+\?" urls/all_urls.txt 2>/dev/null > arjun/with_params.txt
+
 #cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u > arjun/targets.txt
 cat arjun/with_params.txt apis/all_apis.txt 2>/dev/null | sort -u | grep -f ativos/urls.txt > arjun/targets.txt
 ARJUN_TARGETS=$(wc -l < arjun/targets.txt 2>/dev/null || echo 0)
@@ -307,4 +311,3 @@ echo "📊 RESUMO DE VULNS (Nuclei):"
 echo ""
 echo "📄 RELATÓRIO COMPLETO: results/REPORT.md"
 echo ""
-
