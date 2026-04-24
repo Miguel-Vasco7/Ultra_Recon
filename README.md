@@ -9,7 +9,7 @@ Developed by **Miguel Vasco**, Ultra Recon is a streamlined automation suite des
 The tool follows a professional reconnaissance pipeline:
  1. **Passive Recon:** Subdomain discovery via Subfinder and Crt.sh.
  2. **Validation:** Live host checking using HTTPX.
- 3. **Endpoint Mining:** Deep crawling with Katana and GAU.
+ 3. **Endpoint Mining:** Deep crawling with Katana, Wayback Machine and GAU.
  4. **Parameter Discovery:** Hidden parameter fuzzing with Arjun.
  5. **Smart Filtering:** Pattern matching with GF and custom Grep logic.
  6. **Vulnerability Scanning:** Automated validation via Nuclei.
@@ -20,8 +20,7 @@ This tool is designed for Linux (Kali, Parrot, or Ubuntu). You will need sudo pr
 You can install all necessary Go, Python, and System dependencies using the built-in installer:
 ```bash
 # Clone the repository
-git clone https://github.com/youruser/ultra-recon.git
-cd ultra-recon
+https://github.com/Miguel-Vasco7/Recon_Ultra.git
 # Run the dependency installer
 chmod +x install_dependencies.sh
 ./install_dependencies.sh
