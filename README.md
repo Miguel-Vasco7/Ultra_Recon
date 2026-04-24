@@ -1,4 +1,3 @@
-Aqui está a versão atualizada e completa do seu **README.md**. Adicionei a seção de instalação automática (usando o seu script de dependências) e as instruções de como você deve colocar a foto da ferramenta para ela aparecer no GitHub.
 # ULTRA RECON 🚀
 ![Tool Preview](preview.png)
 
