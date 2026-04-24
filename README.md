@@ -5,8 +5,7 @@ Aqui está a versão atualizada e completa do seu **README.md**. Adicionei a se�
 
 **Automated Web Pentest Reconnaissance Framework**
 Developed by **Miguel Vasco**, Ultra Recon is a streamlined automation suite designed for high-efficiency reconnaissance. It maps attack surfaces, filters potential vulnerabilities using logic-based patterns, and validates findings with template-based scanning.
-> **Note:** To display your own screenshot, save your terminal image as preview.png in the root folder of your project.
-> 
+ 
 ## 🛠️ Core Workflow
 The tool follows a professional reconnaissance pipeline:
  1. **Passive Recon:** Subdomain discovery via Subfinder and Crt.sh.
